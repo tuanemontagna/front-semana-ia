@@ -17,7 +17,7 @@ export default function OrdersHistoryPage() {
     cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800', icon: XCircle },
     returned: { label: 'Devolvido', color: 'bg-gray-100 text-gray-800', icon: RotateCcw }
   };
-
+  //teste commit
   const orders = [
     {
       id: 'PED-2024-001',
