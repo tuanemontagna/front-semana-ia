@@ -1,30 +1,23 @@
 'use client'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShoppingCart, Menu, Search, Zap, Shield, Truck, User, Edit, Save, X, ArrowLeft, Phone, Mail, MapPin, Calendar, CreditCard, Package, Heart, Settings, LogOut, Camera, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import api from '../../utils/axios';
 
 export default function ProfilePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const [userProfile, setUserProfile] = useState({
-    name: 'João Silva',
-    email: 'joao.silva@email.com',
-    phone: '(11) 99999-9999',
-    birthDate: '1990-05-15',
-    gender: 'Masculino',
-    cpf: '123.456.789-00',
-    avatar: '👨‍💼'
-  });
-
-  const [editProfile, setEditProfile] = useState({ ...userProfile });
+  const [userProfile, setUserProfile] = useState(null);
+  const [editProfile, setEditProfile] = useState({});
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const addresses = [
     {
@@ -87,6 +80,45 @@ export default function ProfilePage() {
     }
   ];
 
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await api.get('/clientes/meu-perfil');
+        console.log("Dados do perfil retornados pela API:", response.data); // Adicionado para depuração
+
+        // Mapeamento dos dados da API para o formato esperado pelo frontend
+        const profileData = {
+          id: response.data.id_cliente, // Exemplo, ajuste conforme o nome do campo ID retornado
+          name: response.data.nome,
+          email: response.data.email,
+          phone: response.data.telefone,
+          birthDate: response.data.data_nascimento, // Ajuste se o nome do campo for diferente
+          cpf: response.data.cpf,
+          gender: response.data.genero, // Ajuste se o nome do campo for diferente
+          avatar: response.data.avatar || (response.data.nome ? response.data.nome.charAt(0).toUpperCase() : '?'), // Fallback para avatar
+          // Adicione outros campos conforme necessário, mapeando os nomes
+          // Ex: city: response.data.cidade,
+          // Ex: state: response.data.estado,
+        };
+
+        setUserProfile(profileData);
+        setEditProfile(profileData); // Inicializa editProfile com os mesmos dados
+      } catch (err) {
+        console.error("Erro ao buscar perfil:", err);
+        setError(err.response?.data?.message || "Falha ao carregar o perfil. Tente novamente.");
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          router.push('/'); // Redireciona para a home ou login em caso de não autorizado
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [router]); // Adicionado router como dependência do useEffect
+
   const handleNavigation = (route) => {
     router.push(route);
   };
@@ -133,6 +165,18 @@ export default function ProfilePage() {
     { id: 'orders', label: 'Pedidos', icon: Package },
     { id: 'security', label: 'Segurança', icon: Shield }
   ];
+
+  if (loading) {
+    return <p>Carregando perfil...</p>;
+  }
+
+  if (error) {
+    return <p className="text-red-500">{error}</p>;
+  }
+
+  if (!userProfile) {
+    return <p>Nenhum perfil encontrado.</p>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -218,10 +262,15 @@ export default function ProfilePage() {
               <div className="p-6 bg-gradient-to-r from-blue-600 to-orange-500 text-white">
                 <div className="text-center">
                   <div className="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-3xl">{userProfile.avatar}</span>
+                    {/* Exibe a imagem do avatar se disponível, senão a primeira letra do nome */}
+                    {userProfile?.avatar && typeof userProfile.avatar === 'string' && userProfile.avatar.startsWith('http') ? (
+                      <img src={userProfile.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <span className="text-3xl">{userProfile?.avatar || (userProfile?.name ? userProfile.name.charAt(0).toUpperCase() : '?')}</span>
+                    )}
                   </div>
-                  <h2 className="text-xl font-bold">{userProfile.name}</h2>
-                  <p className="text-blue-100 text-sm">{userProfile.email}</p>
+                  <h2 className="text-xl font-bold">{userProfile?.name || 'Nome não disponível'}</h2>
+                  <p className="text-blue-100 text-sm">{userProfile?.email || 'Email não disponível'}</p>
                 </div>
               </div>
 
@@ -296,7 +345,7 @@ export default function ProfilePage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">Nome Completo</label>
                         <input
                           type="text"
-                          value={isEditing ? editProfile.name : userProfile.name}
+                          value={isEditing ? (editProfile.name || '') : (userProfile?.name || '')}
                           onChange={(e) => setEditProfile({ ...editProfile, name: e.target.value })}
                           disabled={!isEditing}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
@@ -307,7 +356,7 @@ export default function ProfilePage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                         <input
                           type="email"
-                          value={isEditing ? editProfile.email : userProfile.email}
+                          value={isEditing ? (editProfile.email || '') : (userProfile?.email || '')}
                           onChange={(e) => setEditProfile({ ...editProfile, email: e.target.value })}
                           disabled={!isEditing}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
@@ -318,7 +367,7 @@ export default function ProfilePage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">Telefone</label>
                         <input
                           type="tel"
-                          value={isEditing ? editProfile.phone : userProfile.phone}
+                          value={isEditing ? (editProfile.phone || '') : (userProfile?.phone || '')}
                           onChange={(e) => setEditProfile({ ...editProfile, phone: e.target.value })}
                           disabled={!isEditing}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
@@ -329,7 +378,7 @@ export default function ProfilePage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">Data de Nascimento</label>
                         <input
                           type="date"
-                          value={isEditing ? editProfile.birthDate : userProfile.birthDate}
+                          value={isEditing ? (editProfile.birthDate || '') : (userProfile?.birthDate || '')}
                           onChange={(e) => setEditProfile({ ...editProfile, birthDate: e.target.value })}
                           disabled={!isEditing}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
@@ -340,7 +389,7 @@ export default function ProfilePage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">CPF</label>
                         <input
                           type="text"
-                          value={userProfile.cpf}
+                          value={userProfile?.cpf || ''}
                           disabled
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50"
                         />
@@ -349,7 +398,7 @@ export default function ProfilePage() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Gênero</label>
                         <select
-                          value={isEditing ? editProfile.gender : userProfile.gender}
+                          value={isEditing ? (editProfile.gender || '') : (userProfile?.gender || '')}
                           onChange={(e) => setEditProfile({ ...editProfile, gender: e.target.value })}
                           disabled={!isEditing}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
