@@ -9,21 +9,12 @@ export default function ProductsPage() {
   const [viewMode, setViewMode] = useState('grid');
   const [sortBy, setSortBy] = useState('relevance');
   const [priceRange, setPriceRange] = useState([0, 50000]);
-  const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const brands = [
-    { id: 'apple', name: 'Apple', count: 87 },
-    { id: 'samsung', name: 'Samsung', count: 123 },
-    { id: 'sony', name: 'Sony', count: 65 },
-    { id: 'lg', name: 'LG', count: 43 },
-    { id: 'xiaomi', name: 'Xiaomi', count: 89 },
-    { id: 'motorola', name: 'Motorola', count: 56 }
-  ];
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     async function fetchData() {
@@ -81,7 +72,7 @@ export default function ProductsPage() {
 
   const filteredProducts = products.filter(product => {
     if (selectedCategory !== 'all' && product.categoryId !== selectedCategory) return false;
-    if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand?.toLowerCase())) return false;
+    if (searchTerm && !product.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     if (product.price < priceRange[0] || product.price > priceRange[1]) return false;
     return true;
   });
@@ -117,6 +108,8 @@ export default function ProductsPage() {
                 <input
                   type="text"
                   placeholder="Buscar produtos..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -170,10 +163,10 @@ export default function ProductsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8">
           {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden sticky top-24">
+          <aside className="sticky top-24 self-start">
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden" style={{ minWidth: 320 }}>
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center">
                   <Filter className="h-5 w-5 mr-2 text-blue-600" />
@@ -209,13 +202,13 @@ export default function ProductsPage() {
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">Faixa de Preço</h4>
                   <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
                       <input
                         type="number"
                         placeholder="Min"
                         value={priceRange[0]}
                         onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-20 px-2 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                       <span className="text-gray-500">-</span>
                       <input
@@ -223,42 +216,17 @@ export default function ProductsPage() {
                         placeholder="Max"
                         value={priceRange[1]}
                         onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 50000])}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-20 px-2 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                 </div>
-
-                {/* Brands */}
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Marcas</h4>
-                  <div className="space-y-2">
-                    {brands.map(brand => (
-                      <label key={brand.id} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedBrands.includes(brand.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedBrands([...selectedBrands, brand.id]);
-                            } else {
-                              setSelectedBrands(selectedBrands.filter(b => b !== brand.id));
-                            }
-                          }}
-                          className="text-blue-600 rounded focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">{brand.name}</span>
-                        <span className="text-xs text-gray-500">({brand.count})</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
               </div>
             </div>
-          </div>
+          </aside>
 
           {/* Products Grid */}
-          <div className="lg:col-span-3">
+          <main className="w-full">
             {/* Toolbar */}
             <div className="bg-white rounded-xl shadow-lg mb-6 p-4">
               <div className="flex items-center justify-between">
@@ -411,7 +379,6 @@ export default function ProductsPage() {
                 <button 
                   onClick={() => {
                     setSelectedCategory('all');
-                    setSelectedBrands([]);
                     setPriceRange([0, 50000]);
                   }}
                   className="bg-gradient-to-r from-blue-600 to-orange-500 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-orange-600 transition-all"
@@ -420,12 +387,12 @@ export default function ProductsPage() {
                 </button>
               </div>
             )}
-          </div>
+          </main>
         </div>
       </div>
 
       {/* Benefits Bar */}
-      <section className="bg-gray-800 text-white py-4 mt-12">
+      <section className="bg-gray-800 text-white py-4 fixed bottom-0 left-0 w-full z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
             <div className="flex items-center justify-center space-x-2">
