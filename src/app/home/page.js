@@ -2,10 +2,12 @@
 import { useState, useEffect } from 'react';
 import { ShoppingCart, Menu, Search, Star, Zap, Shield, Truck, Phone, Laptop, Headphones, Camera, Watch, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import api from '../../utils/axios';
 
 export default function ElectronicsStoreHomepage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
   const router = useRouter();
 
   const heroSlides = [
@@ -40,48 +42,23 @@ export default function ElectronicsStoreHomepage() {
     { name: "Smartwatches", icon: Watch, count: "45+ produtos", route: "/smartwatches" }
   ];
 
-  const featuredProducts = [
-    {
-      id: 1,
-      name: "iPhone 15 Pro Max",
-      price: "R$ 8.999,00",
-      originalPrice: "R$ 9.999,00",
-      image: "📱",
-      rating: 4.9,
-      badge: "Mais Vendido",
-      route: "/produto/iphone-15-pro-max"
-    },
-    {
-      id: 2,
-      name: "MacBook Pro M3",
-      price: "R$ 12.999,00",
-      originalPrice: "R$ 14.999,00",
-      image: "💻",
-      rating: 4.8,
-      badge: "Lançamento",
-      route: "/produto/macbook-pro-m3"
-    },
-    {
-      id: 3,
-      name: "AirPods Pro 2",
-      price: "R$ 1.899,00",
-      originalPrice: "R$ 2.199,00",
-      image: "🎧",
-      rating: 4.7,
-      badge: "Oferta",
-      route: "/produto/airpods-pro-2"
-    },
-    {
-      id: 4,
-      name: "Sony A7 IV",
-      price: "R$ 15.999,00",
-      originalPrice: "R$ 17.999,00",
-      image: "📷",
-      rating: 4.9,
-      badge: "Premium",
-      route: "/produto/sony-a7-iv"
-    }
-  ];
+  useEffect(() => {
+    api.get('/produtos')
+      .then(res => {
+        console.log('Produtos recebidos da API:', res.data); // <-- Adicionado para debug
+        setFeaturedProducts(res.data.map(produto => ({
+          id: produto.id_produto || produto.id || produto._id,
+          name: produto.nome,
+          price: produto.preco_unitario ? `R$ ${Number(produto.preco_unitario).toLocaleString('pt-BR', {minimumFractionDigits: 2})}` : '',
+          originalPrice: produto.preco_original ? `R$ ${Number(produto.preco_original).toLocaleString('pt-BR', {minimumFractionDigits: 2})}` : '',
+          image: produto.imagens && produto.imagens.length > 0 ? produto.imagens[0] : '📱', // ou outro fallback
+          rating: produto.avaliacao || 5,
+          badge: produto.badge || 'Destaque',
+          route: `/produto/${produto.id_produto || produto.id || produto._id}`
+        })));
+      })
+      .catch(err => console.error('Erro ao buscar produtos:', err));
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {

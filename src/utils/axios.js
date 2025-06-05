@@ -1,7 +1,8 @@
 import axios from "axios";
 
+// Troque o IP abaixo pelo IP do seu WSL (descubra com 'hostname -I' no terminal WSL)
 const api = axios.create({
-    baseURL: 'http://localhost:3333'
+    baseURL: 'http://localhost:8080/api' // <-- Substitua pelo IP do seu WSL
 });
 
 api.interceptors.request.use(
