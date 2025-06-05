@@ -16,6 +16,12 @@ export default function ProductsPage() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // id_cliente hardcoded para teste; depois substituir pelo contexto de autenticação
+  const id_cliente = 1;
+  const [addToCartLoading, setAddToCartLoading] = useState(null); // id do produto em loading
+  const [addToCartSuccess, setAddToCartSuccess] = useState(null); // id do produto com sucesso
+  const [addToCartError, setAddToCartError] = useState(null); // id do produto com erro
+
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
@@ -86,6 +92,28 @@ export default function ProductsPage() {
       default: return 0;
     }
   });
+
+  // Função para adicionar ao carrinho via API (usando /carrinho/meu-carrinho/itens)
+  const handleAddToCart = async (e, product) => {
+    e.stopPropagation();
+    setAddToCartLoading(product.id);
+    setAddToCartSuccess(null);
+    setAddToCartError(null);
+    try {
+      await api.post('/carrinho/meu-carrinho/itens', {
+        id_produto: product.id,
+        quantidade: 1,
+        preco_registrado: product.price
+      });
+      setAddToCartSuccess(product.id);
+      setTimeout(() => setAddToCartSuccess(null), 1500);
+    } catch (err) {
+      setAddToCartError(product.id);
+      setTimeout(() => setAddToCartError(null), 2000);
+    } finally {
+      setAddToCartLoading(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -356,13 +384,22 @@ export default function ProductsPage() {
                       </div>
 
                       <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNavigation('/carrinho');
-                        }}
-                        className="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-2 rounded-lg hover:from-blue-700 hover:to-orange-600 transition-all transform hover:scale-105"
+                        onClick={(e) => handleAddToCart(e, product)}
+                        className={`w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-2 rounded-lg hover:from-blue-700 hover:to-orange-600 transition-all transform hover:scale-105 flex items-center justify-center space-x-2 ${addToCartLoading === product.id ? 'opacity-60 cursor-wait' : ''}`}
+                        disabled={addToCartLoading === product.id}
                       >
-                        Adicionar ao Carrinho
+                        {addToCartLoading === product.id ? (
+                          <span>Adicionando...</span>
+                        ) : addToCartSuccess === product.id ? (
+                          <span>Adicionado! ✓</span>
+                        ) : addToCartError === product.id ? (
+                          <span>Erro ao adicionar</span>
+                        ) : (
+                          <>
+                            <ShoppingCart className="h-4 w-4" />
+                            <span>Adicionar ao Carrinho</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
