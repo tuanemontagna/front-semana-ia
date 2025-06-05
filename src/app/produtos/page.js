@@ -12,19 +12,9 @@ export default function ProductsPage() {
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const categories = [
-    { id: 'all', name: 'Todos os Produtos', count: 847 },
-    { id: 'smartphones', name: 'Smartphones', count: 156 },
-    { id: 'notebooks', name: 'Notebooks', count: 89 },
-    { id: 'fones', name: 'Fones de Ouvido', count: 234 },
-    { id: 'cameras', name: 'Câmeras', count: 67 },
-    { id: 'smartwatches', name: 'Smartwatches', count: 45 },
-    { id: 'tablets', name: 'Tablets', count: 78 },
-    { id: 'acessorios', name: 'Acessórios', count: 178 }
-  ];
 
   const brands = [
     { id: 'apple', name: 'Apple', count: 87 },
@@ -36,34 +26,53 @@ export default function ProductsPage() {
   ];
 
   useEffect(() => {
-    async function fetchProducts() {
+    async function fetchData() {
       setLoading(true);
       setError(null);
       try {
-        const response = await api.get('/produtos');
-        // Mapeia os produtos do formato da API para o formato esperado pelo frontend
-        const mappedProducts = response.data.map((item) => ({
+        // Busca produtos e categorias em paralelo
+        const [prodRes, catRes] = await Promise.all([
+          api.get('/produtos'),
+          api.get('/categorias')
+        ]);
+        // Mapeia produtos
+        const mappedProducts = prodRes.data.map((item) => ({
           id: item.id_produto,
           name: item.nome,
           price: Number(item.preco_unitario),
-          originalPrice: Number(item.preco_unitario), // Ajuste se houver campo de preço original
+          originalPrice: Number(item.preco_unitario),
           image: item.imagens && item.imagens.length > 0 ? item.imagens[0].url : '🖼️',
-          rating: item.rating || 4.5, // Valor padrão ou ajuste conforme a API
-          reviews: item.reviews || 0, // Valor padrão ou ajuste conforme a API
-          brand: item.marca || '', // Ajuste se houver campo de marca
-          category: item.categoria?.nome?.toLowerCase() || item.nome_categoria?.toLowerCase() || 'outra',
+          rating: item.rating || 4.5,
+          reviews: item.reviews || 0,
+          brand: item.marca || '',
+          categoryId: item.id_categoria,
           inStock: item.estoque > 0,
-          isNew: false, // Ajuste se houver campo na API
-          discount: 0 // Ajuste se houver campo na API
+          isNew: false,
+          discount: 0
         }));
         setProducts(mappedProducts);
+        // Calcula contagem de produtos por categoria
+        const counts = mappedProducts.reduce((acc, prod) => {
+          acc[prod.categoryId] = (acc[prod.categoryId] || 0) + 1;
+          return acc;
+        }, {});
+        // Mapeia categorias com contagem
+        const mappedCategories = [
+          { id: 'all', name: 'Todos os Produtos', count: mappedProducts.length },
+          ...catRes.data.map(cat => ({
+            id: cat.id_categoria,
+            name: cat.nome,
+            count: counts[cat.id_categoria] || 0
+          }))
+        ];
+        setCategories(mappedCategories);
       } catch (err) {
-        setError('Erro ao carregar produtos');
+        setError('Erro ao carregar produtos ou categorias');
       } finally {
         setLoading(false);
       }
     }
-    fetchProducts();
+    fetchData();
   }, []);
 
   const handleNavigation = (route) => {
@@ -71,7 +80,7 @@ export default function ProductsPage() {
   };
 
   const filteredProducts = products.filter(product => {
-    if (selectedCategory !== 'all' && product.category !== selectedCategory) return false;
+    if (selectedCategory !== 'all' && product.categoryId !== selectedCategory) return false;
     if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand?.toLowerCase())) return false;
     if (product.price < priceRange[0] || product.price > priceRange[1]) return false;
     return true;
