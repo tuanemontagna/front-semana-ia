@@ -1,47 +1,17 @@
 'use client'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShoppingCart, Menu, Search, Star, Zap, Shield, Truck, Plus, Minus, Trash2, ArrowLeft, CreditCard, MapPin, Tag, Gift, CheckCircle, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import api from '../../utils/axios';
 
 export default function ShoppingCartPage() {
   const router = useRouter();
-  
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "iPhone 15 Pro Max 256GB",
-      price: 8999.00,
-      originalPrice: 9999.00,
-      image: "📱",
-      quantity: 1,
-      color: "Titânio Natural",
-      warranty: "1 ano",
-      inStock: true
-    },
-    {
-      id: 2,
-      name: "MacBook Pro M3 14'",
-      price: 12999.00,
-      originalPrice: 14999.00,
-      image: "💻",
-      quantity: 1,
-      color: "Cinza Espacial",
-      warranty: "1 ano",
-      inStock: true
-    },
-    {
-      id: 3,
-      name: "AirPods Pro 2ª Geração",
-      price: 1899.00,
-      originalPrice: 2199.00,
-      image: "🎧",
-      quantity: 2,
-      color: "Branco",
-      warranty: "1 ano",
-      inStock: true
-    }
-  ]);
+  // id_cliente hardcoded para teste; depois substituir pelo contexto de autenticação
+  const id_cliente = 1;
 
+  const [cartItems, setCartItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [selectedShipping, setSelectedShipping] = useState('express');
@@ -52,17 +22,74 @@ export default function ShoppingCartPage() {
     { id: 'premium', name: 'Entrega Premium', time: '24 horas', price: 59.90 }
   ];
 
-  const updateQuantity = (id, newQuantity) => {
+  // Busca itens do carrinho do backend
+  useEffect(() => {
+    async function fetchCart() {
+      setLoading(true);
+      setError(null);
+      try {
+        // Busca o carrinho do cliente
+        const carrinhoRes = await api.get(`/carrinho/${id_cliente}`);
+        const id_carrinho = carrinhoRes.data.id_carrinho;
+        // Busca os itens do carrinho
+        const itensRes = await api.get(`/carrinho/${id_cliente}/itens`);
+        // Mapeia os itens para o formato do frontend
+        const mapped = await Promise.all(itensRes.data.map(async (item) => {
+          // Busca detalhes do produto para exibir nome, imagem, etc.
+          const prodRes = await api.get(`/produtos/${item.id_produto}`);
+          const produto = prodRes.data;
+          return {
+            id: item.id_item_carrinho,
+            id_produto: item.id_produto,
+            name: produto.nome,
+            price: Number(item.preco_registrado),
+            originalPrice: Number(produto.preco_unitario),
+            image: produto.imagens && produto.imagens.length > 0 ? produto.imagens[0].url : '🖼️',
+            quantity: item.quantidade,
+            color: produto.cor || 'Padrão',
+            warranty: '1 ano', // Ajuste se houver campo
+            inStock: produto.estoque > 0
+          };
+        }));
+        setCartItems(mapped);
+      } catch (err) {
+        setError('Erro ao carregar o carrinho');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCart();
+  }, [id_cliente]);
+
+  // Atualiza quantidade de um item no carrinho via API
+  const updateQuantity = async (id, newQuantity) => {
     if (newQuantity < 1) return;
-    setCartItems(items =>
-      items.map(item =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      )
-    );
+    setLoading(true);
+    setError(null);
+    try {
+      const item = cartItems.find(i => i.id === id);
+      await api.put(`/carrinho/${id_cliente}/itens/${item.id_produto}`, { quantidade: newQuantity });
+      setCartItems(items => items.map(i => i.id === id ? { ...i, quantity: newQuantity } : i));
+    } catch (err) {
+      setError('Erro ao atualizar quantidade');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const removeItem = (id) => {
-    setCartItems(items => items.filter(item => item.id !== id));
+  // Remove item do carrinho via API
+  const removeItem = async (id) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const item = cartItems.find(i => i.id === id);
+      await api.delete(`/carrinho/${id_cliente}/itens/${item.id_produto}`);
+      setCartItems(items => items.filter(i => i.id !== id));
+    } catch (err) {
+      setError('Erro ao remover item');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const applyCoupon = () => {
@@ -181,85 +208,91 @@ export default function ShoppingCartPage() {
                   Seu Carrinho ({cartItems.reduce((sum, item) => sum + item.quantity, 0)} itens)
                 </h2>
               </div>
-
-              <div className="divide-y divide-gray-200">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start space-x-4">
-                      {/* Product Image */}
-                      <div className="flex-shrink-0">
-                        <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
-                          <span className="text-3xl">{item.image}</span>
-                        </div>
-                      </div>
-
-                      {/* Product Details */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{item.name}</h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
-                          <span>Cor: {item.color}</span>
-                          <span>•</span>
-                          <span className="flex items-center">
-                            <Shield className="h-3 w-3 mr-1" />
-                            Garantia: {item.warranty}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2 mb-3">
-                          <span className="text-xl font-bold text-gray-900">
-                            R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </span>
-                          {item.originalPrice > item.price && (
-                            <span className="text-sm text-gray-500 line-through">
-                              R$ {item.originalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          {/* Quantity Controls */}
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-600">Quantidade:</span>
-                            <div className="flex items-center border border-gray-300 rounded-lg">
-                              <button
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                className="p-2 hover:bg-gray-100 transition-colors"
-                                disabled={item.quantity <= 1}
-                              >
-                                <Minus className="h-4 w-4 text-gray-600" />
-                              </button>
-                              <span className="px-4 py-2 border-x border-gray-300 font-medium">
-                                {item.quantity}
-                              </span>
-                              <button
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                className="p-2 hover:bg-gray-100 transition-colors"
-                              >
-                                <Plus className="h-4 w-4 text-gray-600" />
-                              </button>
-                            </div>
+              {loading ? (
+                <div className="p-8 text-center text-lg">Carregando...</div>
+              ) : error ? (
+                <div className="p-8 text-center text-red-600">{error}</div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {cartItems.map((item) => (
+                    <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start space-x-4">
+                        {/* Product Image */}
+                        <div className="flex-shrink-0">
+                          <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                            {item.image && item.image.startsWith('http') ? (
+                              <img src={item.image} alt={item.name} className="max-h-16 max-w-full object-contain" />
+                            ) : (
+                              <span className="text-3xl">{item.image}</span>
+                            )}
                           </div>
-
-                          {/* Remove Button */}
-                          <button
-                            onClick={() => removeItem(item.id)}
-                            className="text-red-600 hover:text-red-800 flex items-center space-x-1 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="text-sm">Remover</span>
-                          </button>
                         </div>
-
-                        {/* Stock Status */}
-                        <div className="mt-2 flex items-center">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                          <span className="text-sm text-green-600">Em estoque</span>
+                        {/* Product Details */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1">{item.name}</h3>
+                          <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
+                            <span>Cor: {item.color}</span>
+                            <span>•</span>
+                            <span className="flex items-center">
+                              <Shield className="h-3 w-3 mr-1" />
+                              Garantia: {item.warranty}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2 mb-3">
+                            <span className="text-xl font-bold text-gray-900">
+                              R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                            {item.originalPrice > item.price && (
+                              <span className="text-sm text-gray-500 line-through">
+                                R$ {item.originalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            {/* Quantity Controls */}
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-gray-600">Quantidade:</span>
+                              <div className="flex items-center border border-gray-300 rounded-lg">
+                                <button
+                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                  className="p-2 hover:bg-gray-100 transition-colors"
+                                  disabled={item.quantity <= 1 || loading}
+                                >
+                                  <Minus className="h-4 w-4 text-gray-600" />
+                                </button>
+                                <span className="px-4 py-2 border-x border-gray-300 font-medium">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  className="p-2 hover:bg-gray-100 transition-colors"
+                                  disabled={loading}
+                                >
+                                  <Plus className="h-4 w-4 text-gray-600" />
+                                </button>
+                              </div>
+                            </div>
+                            {/* Remove Button */}
+                            <button
+                              onClick={() => removeItem(item.id)}
+                              className="text-red-600 hover:text-red-800 flex items-center space-x-1 transition-colors"
+                              disabled={loading}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="text-sm">Remover</span>
+                            </button>
+                          </div>
+                          {/* Stock Status */}
+                          <div className="mt-2 flex items-center">
+                            <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                            <span className="text-sm text-green-600">Em estoque</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Shipping Options */}
