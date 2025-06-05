@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShoppingCart, Menu, Search, Star, Zap, Shield, Truck, Filter, Grid, List, ChevronDown, ArrowLeft, User, Heart, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import api from '../../utils/axios';
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -10,6 +11,9 @@ export default function ProductsPage() {
   const [priceRange, setPriceRange] = useState([0, 50000]);
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const categories = [
     { id: 'all', name: 'Todos os Produtos', count: 847 },
@@ -31,92 +35,36 @@ export default function ProductsPage() {
     { id: 'motorola', name: 'Motorola', count: 56 }
   ];
 
-  const products = [
-    {
-      id: 1,
-      name: "iPhone 15 Pro Max 256GB",
-      price: 8999.00,
-      originalPrice: 9999.00,
-      image: "📱",
-      rating: 4.9,
-      reviews: 234,
-      brand: "Apple",
-      category: "smartphones",
-      inStock: true,
-      isNew: true,
-      discount: 10
-    },
-    {
-      id: 2,
-      name: "Samsung Galaxy S24 Ultra",
-      price: 7999.00,
-      originalPrice: 8999.00,
-      image: "📱",
-      rating: 4.8,
-      reviews: 187,
-      brand: "Samsung",
-      category: "smartphones",
-      inStock: true,
-      isNew: false,
-      discount: 11
-    },
-    {
-      id: 3,
-      name: "MacBook Pro M3 14'",
-      price: 12999.00,
-      originalPrice: 14999.00,
-      image: "💻",
-      rating: 4.9,
-      reviews: 156,
-      brand: "Apple",
-      category: "notebooks",
-      inStock: true,
-      isNew: true,
-      discount: 13
-    },
-    {
-      id: 4,
-      name: "Sony WH-1000XM5",
-      price: 2199.00,
-      originalPrice: 2599.00,
-      image: "🎧",
-      rating: 4.7,
-      reviews: 298,
-      brand: "Sony",
-      category: "fones",
-      inStock: true,
-      isNew: false,
-      discount: 15
-    },
-    {
-      id: 5,
-      name: "iPad Air M2",
-      price: 3299.00,
-      originalPrice: 3799.00,
-      image: "📱",
-      rating: 4.6,
-      reviews: 142,
-      brand: "Apple",
-      category: "tablets",
-      inStock: true,
-      isNew: false,
-      discount: 13
-    },
-    {
-      id: 6,
-      name: "Apple Watch Series 9",
-      price: 2499.00,
-      originalPrice: 2899.00,
-      image: "⌚",
-      rating: 4.8,
-      reviews: 203,
-      brand: "Apple",
-      category: "smartwatches",
-      inStock: true,
-      isNew: true,
-      discount: 14
+  useEffect(() => {
+    async function fetchProducts() {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await api.get('/produtos');
+        // Mapeia os produtos do formato da API para o formato esperado pelo frontend
+        const mappedProducts = response.data.map((item) => ({
+          id: item.id_produto,
+          name: item.nome,
+          price: Number(item.preco_unitario),
+          originalPrice: Number(item.preco_unitario), // Ajuste se houver campo de preço original
+          image: item.imagens && item.imagens.length > 0 ? item.imagens[0].url : '🖼️',
+          rating: item.rating || 4.5, // Valor padrão ou ajuste conforme a API
+          reviews: item.reviews || 0, // Valor padrão ou ajuste conforme a API
+          brand: item.marca || '', // Ajuste se houver campo de marca
+          category: item.categoria?.nome?.toLowerCase() || item.nome_categoria?.toLowerCase() || 'outra',
+          inStock: item.estoque > 0,
+          isNew: false, // Ajuste se houver campo na API
+          discount: 0 // Ajuste se houver campo na API
+        }));
+        setProducts(mappedProducts);
+      } catch (err) {
+        setError('Erro ao carregar produtos');
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
+    fetchProducts();
+  }, []);
 
   const handleNavigation = (route) => {
     router.push(route);
@@ -124,7 +72,7 @@ export default function ProductsPage() {
 
   const filteredProducts = products.filter(product => {
     if (selectedCategory !== 'all' && product.category !== selectedCategory) return false;
-    if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand.toLowerCase())) return false;
+    if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand?.toLowerCase())) return false;
     if (product.price < priceRange[0] || product.price > priceRange[1]) return false;
     return true;
   });
@@ -345,87 +293,108 @@ export default function ProductsPage() {
             </div>
 
             {/* Products */}
-            <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
-              {sortedProducts.map(product => (
-                <div
-                  key={product.id}
-                  className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer overflow-hidden group"
-                  onClick={() => handleNavigation(`/produto/${product.id}`)}
-                >
-                  <div className="relative">
-                    <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                      <div className="text-6xl group-hover:scale-110 transition-transform">{product.image}</div>
-                    </div>
-                    
-                    {/* Badges */}
-                    <div className="absolute top-2 left-2 flex flex-col space-y-1">
-                      {product.isNew && (
-                        <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                          Novo
-                        </span>
-                      )}
-                      {product.discount > 0 && (
-                        <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                          -{product.discount}%
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="absolute top-2 right-2 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="bg-white p-2 rounded-full shadow-md hover:bg-gray-50">
-                        <Heart className="h-4 w-4 text-gray-600" />
-                      </button>
-                      <button className="bg-white p-2 rounded-full shadow-md hover:bg-gray-50">
-                        <Eye className="h-4 w-4 text-gray-600" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-                    
-                    <div className="flex items-center mb-2">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-4 w-4 ${
-                            i < Math.floor(product.rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                          }`}
-                        />
-                      ))}
-                      <span className="ml-2 text-sm text-gray-600">({product.reviews})</span>
-                    </div>
-
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <span className="text-lg font-bold text-gray-900">
-                          R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </span>
-                        {product.originalPrice > product.price && (
-                          <span className="text-sm text-gray-500 line-through ml-2">
-                            R$ {product.originalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {loading ? (
+              <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+                <div className="text-6xl mb-4">⏳</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Carregando produtos...</h3>
+              </div>
+            ) : error ? (
+              <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+                <div className="text-6xl mb-4">❌</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">{error}</h3>
+              </div>
+            ) : (
+              <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
+                {sortedProducts.map(product => (
+                  <div
+                    key={product.id}
+                    className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer overflow-hidden group"
+                    onClick={() => handleNavigation(`/produto-individual/${product.id}`)}
+                  >
+                    <div className="relative">
+                      <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                        {product.image && product.image.startsWith('http') ? (
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="max-h-40 max-w-full object-contain group-hover:scale-110 transition-transform"
+                            onError={e => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150?text=Sem+Imagem'; }}
+                          />
+                        ) : (
+                          <span className="text-6xl group-hover:scale-110 transition-transform">🖼️</span>
+                        )}
+                      </div>
+                      
+                      {/* Badges */}
+                      <div className="absolute top-2 left-2 flex flex-col space-y-1">
+                        {product.isNew && (
+                          <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                            Novo
+                          </span>
+                        )}
+                        {product.discount > 0 && (
+                          <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                            -{product.discount}%
                           </span>
                         )}
                       </div>
+
+                      {/* Actions */}
+                      <div className="absolute top-2 right-2 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button className="bg-white p-2 rounded-full shadow-md hover:bg-gray-50">
+                          <Heart className="h-4 w-4 text-gray-600" />
+                        </button>
+                        <button className="bg-white p-2 rounded-full shadow-md hover:bg-gray-50">
+                          <Eye className="h-4 w-4 text-gray-600" />
+                        </button>
+                      </div>
                     </div>
 
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleNavigation('/carrinho');
-                      }}
-                      className="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-2 rounded-lg hover:from-blue-700 hover:to-orange-600 transition-all transform hover:scale-105"
-                    >
-                      Adicionar ao Carrinho
-                    </button>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
+                      
+                      <div className="flex items-center mb-2">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-4 w-4 ${
+                              i < Math.floor(product.rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                        <span className="ml-2 text-sm text-gray-600">({product.reviews})</span>
+                      </div>
+
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <span className="text-lg font-bold text-gray-900">
+                            R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                          {product.originalPrice > product.price && (
+                            <span className="text-sm text-gray-500 line-through ml-2">
+                              R$ {product.originalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigation('/carrinho');
+                        }}
+                        className="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-2 rounded-lg hover:from-blue-700 hover:to-orange-600 transition-all transform hover:scale-105"
+                      >
+                        Adicionar ao Carrinho
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* No Products */}
-            {sortedProducts.length === 0 && (
+            {sortedProducts.length === 0 && !loading && (
               <div className="bg-white rounded-xl shadow-lg p-12 text-center">
                 <div className="text-6xl mb-4">🔍</div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhum produto encontrado</h3>

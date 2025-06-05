@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { ShoppingCart, Menu, Search, Star, Zap, Shield, Truck, Heart, Share2, ArrowLeft, User, Plus, Minus, Check, Info, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import api from '../../utils/axios';
+import api from '../../../utils/axios';
 
 export default function ProductDetailPage({ params }) {
   const router = useRouter();
