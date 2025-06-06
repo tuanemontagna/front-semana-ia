@@ -292,7 +292,7 @@ export default function ProfilePage() {
                     </button>
                   ))}
                   <button
-                    onClick={() => handleNavigation('/login')}
+                    onClick={() => handleNavigation('/')}
                     className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="h-5 w-5" />

@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, User, Mail, Phone, Calendar, Shield, CheckCircle, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, User, Mail, Phone, Calendar, Shield, CheckCircle, ArrowLeft } from 'lucide-react';
+import api from '../../utils/axios'; // Adicionada importação da instância do Axios
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
     // Step 1 - Personal Info
@@ -40,16 +42,32 @@ export default function RegisterPage() {
 
   const [errors, setErrors] = useState({});
 
+  const formatPhone = (value) => {
+    return value
+      .replace(/\D/g, '') // Remove caracteres não numéricos
+      .replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') // Formata como (XX) XXXXX-XXXX
+      .slice(0, 15); // Limita o tamanho máximo
+  };
+
+  const formatZipCode = (value) => {
+    return value
+      .replace(/\D/g, '') // Remove caracteres não numéricos
+      .replace(/(\d{5})(\d{3})/, '$1-$2') // Formata como XXXXX-XXX
+      .slice(0, 9); // Limita o tamanho máximo
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    const formattedValue = name === 'phone' ? formatPhone(value) : name === 'zipCode' ? formatZipCode(value) : value; // Aplica máscara ao telefone e CEP
+
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : formattedValue,
     }));
     
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
         [name]: ''
       }));
@@ -101,17 +119,55 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateStep(3)) return;
-    
+    // Validação final antes de submeter, caso queira garantir que todos os passos foram validados
+    // if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
+    //   alert("Por favor, preencha todos os campos obrigatórios corretamente.");
+    //   return;
+    // }
+
     setIsLoading(true);
-    
-    // Simular cadastro - substituir por lógica real
-    setTimeout(() => {
-      console.log('Registration data:', formData);
+    setError(''); // Limpa erros anteriores
+
+    const payload = {
+      nome: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
+      email: formData.email.trim(),
+      senha: formData.password, // O backend fará o hash
+      telefone: formData.phone.trim(),
+      data_nascimento: formData.birthDate.trim(),
+      genero: formData.gender.trim(),
+      cidade: formData.city.trim(),
+      estado: formData.state.trim(),
+    };
+    console.log("Payload enviado:", payload);
+
+    if (!formData.acceptTerms) {
+      alert("Você deve aceitar os termos de uso para continuar.");
       setIsLoading(false);
-      alert('Cadastro realizado com sucesso!');
-      router.push('/');
-    }, 2000);
+      return;
+    }
+
+    try {
+      const response = await api.post('/clientes', payload);
+      
+      if (response.status === 201 || response.status === 200) { // 200 pode ser usado por alguns backends também
+        alert('Cadastro realizado com sucesso! Você será redirecionado para o login.');
+        router.push('/'); // Idealmente para a página de login, se for diferente da home
+      } else {
+        // Tratar outros status de sucesso que não sejam 201, se houver
+        console.warn("Resposta inesperada do servidor:", response);
+        alert(response.data?.message || "Cadastro concluído, mas com uma resposta inesperada.");
+        router.push('/');
+      }
+    } catch (err) {
+      console.error("Erro no cadastro:", err.response?.data || err.message);
+      const errorMessage = err.response?.data?.message || "Falha ao realizar o cadastro. Verifique os dados ou tente novamente.";
+      alert(errorMessage);
+      // Se quiser exibir o erro na página:
+      // setErrors(prev => ({ ...prev, form: errorMessage })); 
+      // Ou um estado de erro geral: setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const steps = [
@@ -584,26 +640,49 @@ export default function RegisterPage() {
 
             {/* Actions */}
             <div className="flex flex-col md:flex-row items-center justify-between mt-8">
+              {currentStep > 1 && (
+                <button
+                  type="button"
+                  onClick={handlePreviousStep}
+                  className="w-full md:w-auto bg-white text-blue-600 border border-blue-600 rounded-lg py-3 px-6 mb-4 md:mb-0 shadow-sm hover:bg-blue-50 transition-all"
+                >
+                  Voltar
+                </button>
+              )}
+
+              {currentStep < steps.length ? (
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-orange-500 text-white rounded-lg py-3 px-6 shadow-md hover:from-blue-700 hover:to-orange-600 transition-all flex items-center justify-center space-x-2"
+                >
+                  Avançar
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-orange-500 text-white rounded-lg py-3 px-6 shadow-md hover:from-blue-700 hover:to-orange-600 transition-all flex items-center justify-center space-x-2"
+                >
+                  {isLoading ? (
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4zm16 0a8 8 0 01-8 8v-8h8z"></path>
+                    </svg>
+                  ) : (
+                    <span>Criar Conta</span>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {/* Botão de cancelar */}
+            <div className="mt-4">
               <button
                 type="button"
-                onClick={handlePreviousStep}
-                className="w-full md:w-auto bg-white text-blue-600 border border-blue-600 rounded-lg py-3 px-6 mb-4 md:mb-0 shadow-sm hover:bg-blue-50 transition-all"
+                onClick={() => router.push('/home')}
+                className="w-full md:w-auto bg-red-600 text-white rounded-lg py-3 px-6 shadow-md hover:bg-red-700 transition-all flex items-center justify-center space-x-2"
               >
-                Voltar
-              </button>
-              
-              <button
-                type="submit"
-                className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-orange-500 text-white rounded-lg py-3 px-6 shadow-md hover:from-blue-700 hover:to-orange-600 transition-all flex items-center justify-center space-x-2"
-              >
-                {isLoading ? (
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4zm16 0a8 8 0 01-8 8v-8h8z"></path>
-                  </svg>
-                ) : (
-                  <span>Criar Conta</span>
-                )}
+                Cancelar
               </button>
             </div>
           </form>

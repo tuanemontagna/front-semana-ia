@@ -42,6 +42,10 @@ export default function LoginPage() {
     }
   };
 
+  const handleNavigation = (path) => {
+    router.push(path);
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
       <div className="max-w-md w-full space-y-8">
@@ -183,7 +187,7 @@ export default function LoginPage() {
             <p className="text-sm text-slate-600">
               Não tem uma conta?{" "}
               <Link
-                href="/register"
+                href="/cadastro"
                 className="font-medium bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent hover:from-blue-700 hover:to-orange-600 transition-all"
               >
                 Cadastre-se

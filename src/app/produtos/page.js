@@ -145,7 +145,7 @@ export default function ProductsPage() {
 
             <div className="hidden md:flex items-center space-x-6">
               <nav className="flex space-x-6">
-                <button onClick={() => handleNavigation('/')} className="text-gray-700 hover:text-blue-600 transition-colors">Início</button>
+                <button onClick={() => handleNavigation('/home')} className="text-gray-700 hover:text-blue-600 transition-colors">Início</button>
                 <button onClick={() => handleNavigation('/produtos')} className="text-blue-600 font-medium">Produtos</button>
                 <button onClick={() => handleNavigation('/ofertas')} className="text-gray-700 hover:text-blue-600 transition-colors">Ofertas</button>
                 <button onClick={() => handleNavigation('/contato')} className="text-gray-700 hover:text-blue-600 transition-colors">Contato</button>
@@ -180,7 +180,7 @@ export default function ProductsPage() {
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center space-x-2 text-sm">
-            <button onClick={() => handleNavigation('/')} className="text-blue-600 hover:text-blue-800 flex items-center">
+            <button onClick={() => handleNavigation('/home')} className="text-blue-600 hover:text-blue-800 flex items-center">
               <ArrowLeft className="h-4 w-4 mr-1" />
               Início
             </button>

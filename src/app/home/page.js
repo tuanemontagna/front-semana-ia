@@ -54,7 +54,7 @@ export default function ElectronicsStoreHomepage() {
           image: produto.imagens && produto.imagens.length > 0 ? produto.imagens[0] : '📱', // ou outro fallback
           rating: produto.avaliacao || 5,
           badge: produto.badge || 'Destaque',
-          route: `/produto/${produto.id_produto || produto.id || produto._id}`
+          route: `/produto-individual/${produto.id_produto || produto.id || produto._id}`
         })));
       })
       .catch(err => console.error('Erro ao buscar produtos:', err));
@@ -271,7 +271,11 @@ export default function ElectronicsStoreHomepage() {
               >
                 <div className="relative">
                   <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                    <div className="text-6xl group-hover:scale-110 transition-transform">{product.image}</div>
+                    <img
+                      src={product.imagens?.[0]?.url || '/placeholder-image.png'}
+                      alt={product.name}
+                      className="h-full w-full object-cover group-hover:scale-110 transition-transform"
+                    />
                   </div>
                   <div className="absolute top-2 left-2">
                     <span className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
